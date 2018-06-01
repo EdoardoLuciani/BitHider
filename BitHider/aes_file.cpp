@@ -16,10 +16,19 @@ AesFile::AesFile(LPCWSTR path, AesFileSelection value) {
 	if (input_file_ == INVALID_HANDLE_VALUE) {
 		_putws(L"Error");
 	}
+
+	/*pbData_[0] = (BYTE*)HeapAlloc(GetProcessHeap(), 0, SEED_LEN);
+	pbData_[1] = (BYTE*)HeapAlloc(GetProcessHeap(), 0, SEED_LEN);
+	pbData_[2] = (BYTE*)HeapAlloc(GetProcessHeap(), 0, SEED_LEN);
+	*/
+
+	pbData_[0] = (BYTE*)malloc(SEED_LEN);
+	pbData_[1] = (BYTE*)malloc(SEED_LEN);
+	pbData_[2] = (BYTE*)malloc(SEED_LEN);
+
 	
-	
-	VirtualAlloc(iv_, IV_LEN, MEM_COMMIT | MEM_RESERVE , PAGE_READWRITE);						//remove MEM_WRITE_WATCH
-	VirtualAlloc(key_, KEY_LEN, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);						//remove MEM_WRITE_WATCH
+	//VirtualAlloc(iv_, IV_LEN, MEM_COMMIT | MEM_RESERVE , PAGE_READWRITE);						//remove MEM_WRITE_WATCH
+	//VirtualAlloc(key_, KEY_LEN, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);						//remove MEM_WRITE_WATCH
 																									//VirtualAlloc(key_, KEY_LEN, MEM_RESERVE | MEM_WRITE_WATCH, PAGE_NOACCESS);																								//VirtualAlloc(key_, KEY_LEN, MEM_RESERVE | MEM_WRITE_WATCH, PAGE_NOACCESS);
 
 	//VirtualAlloc(iv_, IV_LEN, MEM_RESERVE | MEM_WRITE_WATCH, PAGE_NOACCESS);						//remove MEM_WRITE_WATCH
@@ -41,22 +50,24 @@ int AesFile::InitGen() {
 
 	try {
 
-	wprintf(L"Generating Seeds");
+	wprintf(L"Generating Seeds ");
 	gen_random_status_code = BCryptGenRandom(NULL, pbData_[0], SEED_LEN, BCRYPT_USE_SYSTEM_PREFERRED_RNG);
 	gen_random_status_code = BCryptGenRandom(NULL, pbData_[1], SEED_LEN, BCRYPT_USE_SYSTEM_PREFERRED_RNG);
 	gen_random_status_code = BCryptGenRandom(NULL, pbData_[2], SEED_LEN, BCRYPT_USE_SYSTEM_PREFERRED_RNG);
 
 	if (!gen_random_status_code) {
+		wprintf(L"[ FAIL ]\n");
 		throw ERROR_GENERATING_SEED;
 	} 
 	else {
 		wprintf(L"[ OK ]\n");
 	}
 
-	wprintf(L"Inizializing Generator");
+	wprintf(L"Inizializing Generator ");
 	random_init_status_code = BBS->Init( (char*)pbData_[0], (char*)pbData_[1], (char*)pbData_[2], SEED_LEN);
 
 	if (random_init_status_code) {
+		wprintf(L"[ FAIL ]\n");
 		throw random_init_status_code;
 	}
 	else {

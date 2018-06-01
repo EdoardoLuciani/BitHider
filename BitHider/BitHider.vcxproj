@@ -166,7 +166,7 @@
     <ClCompile Include="aes.cpp" />
     <ClCompile Include="aes_file.cpp" />
     <ClCompile Include="CBBS.cpp" />
-    <ClCompile Include="CryptoMaster.cpp" />
+    <ClCompile Include="BitHider.cpp" />
     <ClCompile Include="cryptoTK.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

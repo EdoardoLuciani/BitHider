@@ -37,9 +37,6 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CryptoMaster.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="cryptoTK.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -50,6 +47,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="aes_file.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BitHider.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
