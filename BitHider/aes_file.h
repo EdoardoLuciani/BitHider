@@ -7,13 +7,10 @@
 
 #define ERROR_GENERATING_SEED 200
 
-
-
 enum AesFileSelection {
 	Encrypt,
 	Decrypt
 };
-
 
 
 class AesFile {
@@ -44,8 +41,8 @@ private:
 
 	pCBBS BBS;							//pointer to random generator class
 
-	BYTE *iv_;							//pointer to IV
-	BYTE *key_;							//pointer to KEY
+	LPVOID iv_;							//pointer to IV
+	LPVOID key_;							//pointer to KEY
 
 	HANDLE input_file_;					//input file
 	uint64_t input_file_len_;				//input file lenght

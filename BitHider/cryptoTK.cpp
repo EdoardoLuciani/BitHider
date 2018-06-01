@@ -4,12 +4,12 @@
 #include "cryptoTK.hpp"
 
 
-int8_t win_bcrypto_seed (int len, BYTE *pbData) {
+int8_t WinBCryptoSeed(int len, BYTE *pbData) {
 BCryptGenRandom(NULL, pbData, len, BCRYPT_USE_SYSTEM_PREFERRED_RNG);
 return 0;
 }
 
-int8_t win_crypto_seed(int len, BYTE *pbData) {
+int8_t WinCryptoSeed(int len, BYTE *pbData) {
 
 HCRYPTPROV   hCryptProv;
 
@@ -27,7 +27,7 @@ if( CryptAcquireContext( &hCryptProv, NULL, NULL, PROV_RSA_FULL, 0) ) {
 else {
     printf(" [ FAIL ]\n");
     if (WARNING) {
-        Init_Error();
+        InitError();
     }
     return -1;
 }
@@ -44,7 +44,7 @@ if(CryptGenRandom( hCryptProv, len, pbData) ) {
 else {
     printf(" [ FAIL ]\n");
     if (WARNING) {
-        Init_Error();
+        InitError();
     }
 
     return -1;
@@ -53,7 +53,7 @@ else {
 return 0;
 }
 
-void hex_value_string_to_hex_value(char *input_str , uint8_t *hex_values , int input_string_len) {
+void HexStringToHexValue(char *input_str , uint8_t *hex_values , int input_string_len) {
 
     input_string_len = input_string_len /2;
 
@@ -68,7 +68,7 @@ void hex_value_string_to_hex_value(char *input_str , uint8_t *hex_values , int i
     }
 }
 
-void print_hex(uint8_t * str,int len) {
+void PrintHex(uint8_t * str,int len) {
 
         for(int i=0;i<len;i++) {
         printf("%.2x", str[i]);
@@ -76,15 +76,15 @@ void print_hex(uint8_t * str,int len) {
         printf("\n");
 }
 
-char* get_filename(char str[], int len) {
+char* GetFilename(char str[], int len) {
 
 static char file_name[256]={0};
 
 int slash_pos;
 int point_pos = NULL;
-char enc_text[20] ={"_encrypted"};
+char enc_text[20] = { "_encrypted" };
 
-int enc_text_len=strlen(enc_text);
+int enc_text_len = strlen(enc_text);
 
 for (int i=len; i>0; i--) {
     if (str[i] == '\\') {
@@ -131,7 +131,7 @@ void SetColor(int ForgC) {
  }
 }
 
-unsigned long long int random_interval(unsigned long long int ran, int itv_max, int itv_min) {
+unsigned long long int RandomInterval(unsigned long long int ran, int itv_max, int itv_min) {
 
 
     //(max_number + 1 - minimum_number) + minimum_number
@@ -140,7 +140,7 @@ unsigned long long int random_interval(unsigned long long int ran, int itv_max, 
     return rad;
 }
 
-int8_t secure_file_delete(int block_len, int seed_len, char *str) {
+int8_t SecureFileDelete(int block_len, int seed_len, char *str) {
 
 
 
@@ -166,11 +166,11 @@ int8_t secure_file_delete(int block_len, int seed_len, char *str) {
     pCBBS	BBS;								//BBS is a pointer to the instance of the class CBBS
     BBS = new CBBS;
 
-    win_crypto_seed(seed_len , pbData1 );
+    WinBCryptoSeed(seed_len , pbData1 );
 
-    win_crypto_seed(seed_len , pbData2 );
+	WinBCryptoSeed(seed_len , pbData2 );
 
-    win_crypto_seed(seed_len , pbData3 );
+	WinBCryptoSeed(seed_len , pbData3 );
 
 
     BBS->Init(Seedp, Seedq, Seedx, seed_len);
@@ -201,7 +201,7 @@ int8_t secure_file_delete(int block_len, int seed_len, char *str) {
 
         buffer = new uint8_t[block_len];
 
-        print_hex(buffer,block_len);
+        PrintHex(buffer,block_len);
         system("PAUSE");
 
         BBS->GetRndBin(buffer,block_len);
@@ -218,7 +218,7 @@ int8_t secure_file_delete(int block_len, int seed_len, char *str) {
         //encrypting
         BBS->GetRndBin(buffer,remaining_bytes);
 
-        print_hex(buffer,block_len);
+        PrintHex(buffer,block_len);
 
         fwrite (buffer , 1, remaining_bytes, file);
         fclose (file);
@@ -246,7 +246,7 @@ int8_t secure_file_delete(int block_len, int seed_len, char *str) {
 		return(-1);
 }
 
-int Init_Error() {
+int InitError() {
 
 
      int msgboxID = MessageBox(
