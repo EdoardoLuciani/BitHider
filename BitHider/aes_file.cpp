@@ -17,15 +17,10 @@ AesFile::AesFile(LPCWSTR path, AesFileSelection value) {
 		_putws(L"Error");
 	}
 
-	/*pbData_[0] = (BYTE*)HeapAlloc(GetProcessHeap(), 0, SEED_LEN);
+	pbData_[0] = (BYTE*)HeapAlloc(GetProcessHeap(), 0, SEED_LEN);
 	pbData_[1] = (BYTE*)HeapAlloc(GetProcessHeap(), 0, SEED_LEN);
 	pbData_[2] = (BYTE*)HeapAlloc(GetProcessHeap(), 0, SEED_LEN);
-	*/
-
-	pbData_[0] = (BYTE*)malloc(SEED_LEN);
-	pbData_[1] = (BYTE*)malloc(SEED_LEN);
-	pbData_[2] = (BYTE*)malloc(SEED_LEN);
-
+	
 	
 	//VirtualAlloc(iv_, IV_LEN, MEM_COMMIT | MEM_RESERVE , PAGE_READWRITE);						//remove MEM_WRITE_WATCH
 	//VirtualAlloc(key_, KEY_LEN, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);						//remove MEM_WRITE_WATCH
@@ -48,20 +43,32 @@ int AesFile::InitGen() {
 	NTSTATUS gen_random_status_code;
 	int random_init_status_code;
 
+	
+
 	try {
 
-	wprintf(L"Generating Seeds ");
-	gen_random_status_code = BCryptGenRandom(NULL, pbData_[0], SEED_LEN, BCRYPT_USE_SYSTEM_PREFERRED_RNG);
-	gen_random_status_code = BCryptGenRandom(NULL, pbData_[1], SEED_LEN, BCRYPT_USE_SYSTEM_PREFERRED_RNG);
-	gen_random_status_code = BCryptGenRandom(NULL, pbData_[2], SEED_LEN, BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+	//Starting Seed Generation
 
-	if (!gen_random_status_code) {
+	
+
+	for (int i = 0; i < 3; i++) {
+	wprintf(L"Generating Seed #%d ", i);
+	gen_random_status_code = BCryptGenRandom(NULL, pbData_[i], SEED_LEN, BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+
+	if ( gen_random_status_code == STATUS_INVALID_HANDLE) {
 		wprintf(L"[ FAIL ]\n");
-		throw ERROR_GENERATING_SEED;
+		throw STATUS_INVALID_HANDLE;
 	} 
+	else if (gen_random_status_code == STATUS_INVALID_PARAMETER) {
+		wprintf(L"[ FAIL ]\n");
+		throw STATUS_INVALID_PARAMETER;
+	}
 	else {
 		wprintf(L"[ OK ]\n");
 	}
+
+	}
+	//Generator Inizialization
 
 	wprintf(L"Inizializing Generator ");
 	random_init_status_code = BBS->Init( (char*)pbData_[0], (char*)pbData_[1], (char*)pbData_[2], SEED_LEN);
@@ -92,9 +99,15 @@ void AesFile::GenerateKey() {
 }
 
 void AesFile::PrintInfo() {
-	wprintf(L"IV: ");
+	/*wprintf(L"IV: ");
 	print_hex(iv_, IV_LEN);
 
 	wprintf(L"\nKey: ");
-	print_hex(key_, KEY_LEN);
+	print_hex(key_, KEY_LEN);*/
+
+	for (int i = 0; i < 3; i++) {
+		wprintf(L"Seed: ");
+		print_hex(pbData_[i], KEY_LEN);
+	}
+	
 }

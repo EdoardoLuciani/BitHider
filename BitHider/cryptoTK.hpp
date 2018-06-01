@@ -16,7 +16,10 @@ char* get_filename								(char [],int len);						//dangerous, the buffer HAS to
 void SetColor									(int);
 uint64_t random_interval						(unsigned long long int, int, int);
 int8_t secure_file_delete						(int, int,char *);
-int Init_Error									();
+
+
+int Init_Error									();										//WINDOWS API FUNCTIONS
 void DisplayError								(LPTSTR);
+void ErrorExit									(LPTSTR);
 
 
