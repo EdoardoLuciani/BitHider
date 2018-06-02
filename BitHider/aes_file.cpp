@@ -102,9 +102,18 @@ void AesFile::PrintInfo() {
 	wprintf(L"Key: ");
 	PrintHex((uint8_t*)key_, KEY_LEN);
 
+	wprintf(L"IV Address 0x%lp\n", iv_);
+
+	wprintf(L"Key Address 0x%lp\n", key_);
+
+
 	for (int i = 0; i < 3; i++) {
-		wprintf(L"Seed: ");
+		wprintf(L"Seed #%d: ",i);
 		PrintHex(pbData_[i], KEY_LEN);
+	}
+
+	for (int i = 0; i < 3; i++) {
+		wprintf(L"Seed #%d Address: 0x%lp\n", i, pbData_[i]);
 	}
 	
 }
