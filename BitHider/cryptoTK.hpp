@@ -8,7 +8,6 @@
 
 
 int8_t WinBCryptoSeed							(int,   BYTE *  );						//The buffer HAS to be allocated
-int8_t WinCryptoSeed							(int,   BYTE *  );						//Deprecated use win_bcrypto_seed instead, the buffer HAS to be allocated
 void HexStringToHexValue						(char*,uint8_t*,int);					//The buffers has to be allocated
 void PrintHex									(uint8_t*,int);
 char* GetFilename								(char [],int len);						//dangerous, the buffer HAS to be allocated

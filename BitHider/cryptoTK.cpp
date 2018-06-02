@@ -9,43 +9,6 @@ BCryptGenRandom(NULL, pbData, len, BCRYPT_USE_SYSTEM_PREFERRED_RNG);
 return 0;
 }
 
-int8_t WinCryptoSeed(int len, BYTE *pbData) {
-
-HCRYPTPROV   hCryptProv;
-
-
-//-------------------------------------------------------------------
-// Begin processing.
-
-//-------------------------------------------------------------------
-// Acquire a cryptographic provider context handle.
-printf("CryptAcquireContext");
-
-if( CryptAcquireContext( &hCryptProv, NULL, NULL, PROV_RSA_FULL, 0) ) {
-    printf(" [ OK ]\n");
-}
-else {
-    printf(" [ FAIL ]\n");
-    return -1;
-}
-
-
-// Generate a random initialization vector.
-
-printf("Random sequence");
-
-if(CryptGenRandom( hCryptProv, len, pbData) ) {
-     printf(" [ OK ]\n");
-}
-
-else {
-	printf(" [ FAIL ]\n");
-    return -1;
-}
-
-return 0;
-}
-
 void HexStringToHexValue(char *input_str , uint8_t *hex_values , int input_string_len) {
 
     input_string_len = input_string_len /2;
@@ -239,7 +202,6 @@ int8_t SecureFileDelete(int block_len, int seed_len, char *str) {
 		return(-1);
 }
 
-
 void ErrorExit(LPTSTR lpszFunction) {
 	// Retrieve the system error message for the last-error code
 
@@ -260,7 +222,7 @@ void ErrorExit(LPTSTR lpszFunction) {
 	// Display the error message and exit the process
 
 	if (lpMsgBuf == NULL) {
-		lpMsgBuf = (LPVOID*)HeapAlloc(GetProcessHeap(), HEAP_GENERATE_EXCEPTIONS, 32);
+		lpMsgBuf = (LPVOID)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, 32);
 		StringCchCopy((LPTSTR)lpMsgBuf, 32, L"See Documentation for more info");
 	}
 
@@ -270,7 +232,7 @@ void ErrorExit(LPTSTR lpszFunction) {
 
 	MessageBox(NULL, (LPCTSTR)lpDisplayBuf, NULL, MB_OK | MB_ICONWARNING );
 
+	HeapFree(GetProcessHeap(),NULL,lpDisplayBuf);
 	LocalFree(lpMsgBuf);
-	LocalFree(lpDisplayBuf);
 	PostQuitMessage(WM_QUIT);
 }

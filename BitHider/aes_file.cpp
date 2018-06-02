@@ -5,13 +5,17 @@
 
 AesFile::AesFile(LPCWSTR path, AesFileSelection value) {
 
+	int iv_lock_return, key_lock_return;
 	TCHAR working_directory[MAX_STR_LEN];
 
 	GetCurrentDirectory(MAX_STR_LEN, working_directory);
-
 	wprintf(_T("Working Directory:%s\n"), working_directory);
 
-	input_file_ = CreateFileW(path, GENERIC_READ, NULL, NULL, OPEN_EXISTING, FILE_FLAG_WRITE_THROUGH, NULL);	
+	GetSystemInfo(&sSysInfo_);
+
+	input_file_ = CreateFileW(path, GENERIC_READ, NULL, NULL, OPEN_EXISTING, FILE_FLAG_WRITE_THROUGH, NULL);
+
+	BBS = new CBBS;
 	
 	if (input_file_ == INVALID_HANDLE_VALUE) {
 		ErrorExit( (LPTSTR)L"Opening File");
@@ -22,19 +26,20 @@ AesFile::AesFile(LPCWSTR path, AesFileSelection value) {
 
 		if ( pbData_[i] == NULL) {
 		SetLastError(ALLOC_FAILED);
-		ErrorExit((LPTSTR)L"Problem");
+		ErrorExit((LPTSTR)L"HeapAlloc");
 		}
 	}
 	
-	iv_ = VirtualAlloc(NULL, IV_LEN, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-
-	key_ = VirtualAlloc(NULL, IV_LEN, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	iv_ = VirtualAlloc(NULL, sSysInfo_.dwPageSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	key_ = VirtualAlloc(NULL, sSysInfo_.dwPageSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
 	if (iv_ == NULL || key_ == NULL) {
 		ErrorExit((LPTSTR)L"VirtualAlloc");
 	}
-	
-	BBS = new CBBS;
+
+	if (!VirtualLock(iv_, sSysInfo_.dwPageSize) || !VirtualLock(iv_, sSysInfo_.dwPageSize)) {
+		ErrorExit((LPTSTR)L"VirtualLock");
+	}
 }
 
 
@@ -87,11 +92,34 @@ int AesFile::InitGen() {
 }
 
 void AesFile::GenerateIv() {
+	wprintf(L"\n\nIV Generation ");
 	BBS->GetRndBin((uint8_t*)iv_, IV_LEN);
+	wprintf(L"[ OK ]\n");
+
+	wprintf(L"Memory Locking ");
+	if (!VirtualProtect(iv_, sSysInfo_.dwPageSize, PAGE_NOACCESS, &old_protect_value_)) {
+		wprintf(L"[ FAIL ]\n");
+		ErrorExit((LPTSTR)L"VirtualProtect");
+	}
+	else {
+		wprintf(L"[ OK ]\n");
+	}
 }
 
 void AesFile::GenerateKey() {
+	wprintf(L"\n\nKey Generation ");
 	BBS->GetRndBin((uint8_t*)key_, KEY_LEN);
+	wprintf(L"[ OK ]\n");
+
+	wprintf(L"Memory Locking ");
+	if (!VirtualProtect(key_, sSysInfo_.dwPageSize, PAGE_NOACCESS, &old_protect_value_)) {
+		wprintf(L"[ FAIL ]\n");
+		ErrorExit((LPTSTR)L"VirtualProtect");
+	}
+	else {
+		wprintf(L"[ OK ]\n");
+	}
+	
 }
 
 void AesFile::PrintInfo() {
@@ -104,7 +132,7 @@ void AesFile::PrintInfo() {
 
 	wprintf(L"IV Address 0x%lp\n", iv_);
 
-	wprintf(L"Key Address 0x%lp\n", key_);
+	wprintf(L"Key Address 0x%lp\n\n\n", key_);
 
 
 	for (int i = 0; i < 3; i++) {
