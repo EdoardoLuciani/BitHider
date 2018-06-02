@@ -11,28 +11,28 @@ AesFile::AesFile(LPCWSTR path, AesFileSelection value) {
 
 	wprintf(_T("Working Directory:%s\n"), working_directory);
 
-	input_file_ = CreateFileW(path, GENERIC_READ, NULL, NULL, OPEN_EXISTING, FILE_FLAG_WRITE_THROUGH, NULL);
-
+	input_file_ = CreateFileW(path, GENERIC_READ, NULL, NULL, OPEN_EXISTING, FILE_FLAG_WRITE_THROUGH, NULL);	
+	
 	if (input_file_ == INVALID_HANDLE_VALUE) {
 		ErrorExit( (LPTSTR)L"Opening File");
 	}
 
 	for (int i = 0; i < 3; i++) {
-
 		pbData_[i] = (BYTE*)HeapAlloc(GetProcessHeap(), NULL, SEED_LEN);
 
-		if ( pbData_[i] != NULL) {
+		if ( pbData_[i] == NULL) {
 		SetLastError(ALLOC_FAILED);
 		ErrorExit((LPTSTR)L"Problem");
-	}
-
+		}
 	}
 	
-	iv_ = VirtualAlloc(NULL, IV_LEN, MEM_RESERVE, PAGE_NOACCESS);
-	VirtualAlloc(iv_, IV_LEN, MEM_COMMIT, PAGE_READWRITE);
+	iv_ = VirtualAlloc(NULL, IV_LEN, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
-	key_ = VirtualAlloc(NULL, IV_LEN, MEM_RESERVE, PAGE_NOACCESS);
-	VirtualAlloc(key_, KEY_LEN, MEM_COMMIT, PAGE_READWRITE);																									
+	key_ = VirtualAlloc(NULL, IV_LEN, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+
+	if (iv_ == NULL || key_ == NULL) {
+		ErrorExit((LPTSTR)L"VirtualAlloc");
+	}
 	
 	BBS = new CBBS;
 }
@@ -58,10 +58,10 @@ int AesFile::InitGen() {
 	if ( gen_random_status_code != 0x00000000) {
 		wprintf(L"[ FAIL ]\n");
 		throw gen_random_status_code;
-	} 
+		} 
 	else {
 		wprintf(L"[ OK ]\n");
-	} 
+		} 
 	}
 
 	//Generator Inizialization
@@ -72,10 +72,10 @@ int AesFile::InitGen() {
 	if (random_init_status_code) {
 		wprintf(L"[ FAIL ]\n");
 		throw (DWORD)random_init_status_code;
-	}
+		}
 	else {
 		wprintf(L"[ OK ]\n");
-	}
+		}
 
 	}
 	catch (DWORD x) {
