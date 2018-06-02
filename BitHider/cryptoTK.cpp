@@ -26,9 +26,6 @@ if( CryptAcquireContext( &hCryptProv, NULL, NULL, PROV_RSA_FULL, 0) ) {
 }
 else {
     printf(" [ FAIL ]\n");
-    if (WARNING) {
-        InitError();
-    }
     return -1;
 }
 
@@ -42,11 +39,7 @@ if(CryptGenRandom( hCryptProv, len, pbData) ) {
 }
 
 else {
-    printf(" [ FAIL ]\n");
-    if (WARNING) {
-        InitError();
-    }
-
+	printf(" [ FAIL ]\n");
     return -1;
 }
 
@@ -246,25 +239,18 @@ int8_t SecureFileDelete(int block_len, int seed_len, char *str) {
 		return(-1);
 }
 
-int InitError() {
+void RetrieveDWORDErrorExit(LPTSTR text, DWORD error_value) {
 
+	LPVOID lpDisplayBuf;
 
-     int msgboxID = MessageBox(
-        0,
-        TEXT("Random number generator didn't inizialize, run program with Administrator Permission. Do you want to continue anyway (NOT RECOMMENDED)?"),
-        TEXT("Error"),
-        MB_TASKMODAL | MB_TOPMOST | MB_YESNO | MB_DEFBUTTON2 | MB_ICONSTOP
-    );
+	lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT, (lstrlen((LPCTSTR)text) + 40) * sizeof(TCHAR) );
 
-    switch (msgboxID)
-    {
-    case IDNO:
-        exit(0);
-        break;
-    }
+	StringCchPrintf((LPTSTR)lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR), TEXT("%s 0x%02XL"), text, error_value);
 
+	MessageBox(NULL, (LPCTSTR)lpDisplayBuf, NULL, MB_OK | MB_ICONWARNING);
 
-    return msgboxID;
+	LocalFree(lpDisplayBuf);
+	PostQuitMessage(WM_QUIT);
 }
 
 void DisplayError(LPCWSTR lpszFunction) {
@@ -326,15 +312,13 @@ void ErrorExit(LPTSTR lpszFunction) {
 
 	// Display the error message and exit the process
 
-	lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT,
-		(lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
-	StringCchPrintf((LPTSTR)lpDisplayBuf,
-		LocalSize(lpDisplayBuf) / sizeof(TCHAR),
-		TEXT("%s failed with error %d: %s"),
-		lpszFunction, dw, lpMsgBuf);
-	MessageBox(NULL, (LPCTSTR)lpDisplayBuf, TEXT("Error"), MB_OK);
+	lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT, (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
+
+	StringCchPrintf((LPTSTR)lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR), TEXT("%s failed with error %d: %s"), lpszFunction, dw, lpMsgBuf);
+
+	MessageBox(NULL, (LPCTSTR)lpDisplayBuf, NULL, MB_OK | MB_ICONWARNING );
 
 	LocalFree(lpMsgBuf);
 	LocalFree(lpDisplayBuf);
-	ExitProcess(dw);
+	PostQuitMessage(WM_QUIT);
 }

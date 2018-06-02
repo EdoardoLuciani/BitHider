@@ -11,15 +11,15 @@ AesFile::AesFile(LPCWSTR path, AesFileSelection value) {
 
 	wprintf(_T("Working Directory:%s\n"), working_directory);
 
-	input_file_ = CreateFileW(path, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_FLAG_WRITE_THROUGH, NULL);
+	input_file_ = CreateFileW(path, GENERIC_READ, NULL, NULL, OPEN_EXISTING, FILE_FLAG_WRITE_THROUGH, NULL);
 
 	if (input_file_ == INVALID_HANDLE_VALUE) {
-		_putws(L"Error");
+		ErrorExit( (LPTSTR)L"Opening File");
 	}
 
-	pbData_[0] = (BYTE*)HeapAlloc(GetProcessHeap(), 0, SEED_LEN);
-	pbData_[1] = (BYTE*)HeapAlloc(GetProcessHeap(), 0, SEED_LEN);
-	pbData_[2] = (BYTE*)HeapAlloc(GetProcessHeap(), 0, SEED_LEN);
+	pbData_[0] = (BYTE*)HeapAlloc(GetProcessHeap(), HEAP_GENERATE_EXCEPTIONS, SEED_LEN);
+	pbData_[1] = (BYTE*)HeapAlloc(GetProcessHeap(), HEAP_GENERATE_EXCEPTIONS, SEED_LEN);
+	pbData_[2] = (BYTE*)HeapAlloc(GetProcessHeap(), HEAP_GENERATE_EXCEPTIONS, SEED_LEN);
 	
 	iv_ = VirtualAlloc(NULL, IV_LEN, MEM_RESERVE, PAGE_NOACCESS);
 	VirtualAlloc(iv_, IV_LEN, MEM_COMMIT, PAGE_READWRITE);
@@ -41,31 +41,22 @@ int AesFile::InitGen() {
 	NTSTATUS gen_random_status_code;
 	int random_init_status_code;
 
-	
-
 	try {
-
 	//Starting Seed Generation
-
-	
 
 	for (int i = 0; i < 3; i++) {
 	wprintf(L"Generating Seed #%d ", i);
 	gen_random_status_code = BCryptGenRandom(NULL, pbData_[i], SEED_LEN, BCRYPT_USE_SYSTEM_PREFERRED_RNG);
 
-	if ( gen_random_status_code == STATUS_INVALID_HANDLE) {
+	if ( gen_random_status_code != 0x00000000) {
 		wprintf(L"[ FAIL ]\n");
-		throw STATUS_INVALID_HANDLE;
+		throw gen_random_status_code;
 	} 
-	else if (gen_random_status_code == STATUS_INVALID_PARAMETER) {
-		wprintf(L"[ FAIL ]\n");
-		throw STATUS_INVALID_PARAMETER;
-	}
 	else {
 		wprintf(L"[ OK ]\n");
+	} 
 	}
 
-	}
 	//Generator Inizialization
 
 	wprintf(L"Inizializing Generator ");
@@ -73,16 +64,15 @@ int AesFile::InitGen() {
 
 	if (random_init_status_code) {
 		wprintf(L"[ FAIL ]\n");
-		throw random_init_status_code;
+		throw (DWORD)random_init_status_code;
 	}
 	else {
 		wprintf(L"[ OK ]\n");
 	}
 
 	}
-	catch (int x)
-	{
-		return x;
+	catch (DWORD x) {
+		RetrieveDWORDErrorExit((LPTSTR)L"See documentation for more info \nProcess Terminated with Error", x);
 	}
 
 	return 0;

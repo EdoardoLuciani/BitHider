@@ -17,8 +17,6 @@ class AesFile {
 
 public:
 
-
-
 	AesFile(LPCWSTR path, AesFileSelection value);
 	~AesFile();
 
