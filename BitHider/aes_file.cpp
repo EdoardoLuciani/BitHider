@@ -17,9 +17,16 @@ AesFile::AesFile(LPCWSTR path, AesFileSelection value) {
 		ErrorExit( (LPTSTR)L"Opening File");
 	}
 
-	pbData_[0] = (BYTE*)HeapAlloc(GetProcessHeap(), HEAP_GENERATE_EXCEPTIONS, SEED_LEN);
-	pbData_[1] = (BYTE*)HeapAlloc(GetProcessHeap(), HEAP_GENERATE_EXCEPTIONS, SEED_LEN);
-	pbData_[2] = (BYTE*)HeapAlloc(GetProcessHeap(), HEAP_GENERATE_EXCEPTIONS, SEED_LEN);
+	for (int i = 0; i < 3; i++) {
+
+		pbData_[i] = (BYTE*)HeapAlloc(GetProcessHeap(), NULL, SEED_LEN);
+
+		if ( pbData_[i] != NULL) {
+		SetLastError(ALLOC_FAILED);
+		ErrorExit((LPTSTR)L"Problem");
+	}
+
+	}
 	
 	iv_ = VirtualAlloc(NULL, IV_LEN, MEM_RESERVE, PAGE_NOACCESS);
 	VirtualAlloc(iv_, IV_LEN, MEM_COMMIT, PAGE_READWRITE);
@@ -72,7 +79,8 @@ int AesFile::InitGen() {
 
 	}
 	catch (DWORD x) {
-		RetrieveDWORDErrorExit((LPTSTR)L"See documentation for more info \nProcess Terminated with Error", x);
+		SetLastError(x);
+		ErrorExit((LPTSTR)L"Problem");
 	}
 
 	return 0;

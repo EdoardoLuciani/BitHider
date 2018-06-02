@@ -16,9 +16,6 @@ void SetColor									(int);
 uint64_t RandomInterval							(unsigned long long int, int, int);
 int8_t SecureFileDelete							(int, int,char *);
 
-
-void RetrieveDWORDErrorExit						(LPTSTR,DWORD);										//WINDOWS API FUNCTIONS
-void DisplayError								(LPTSTR);
 void ErrorExit									(LPTSTR);
 
 

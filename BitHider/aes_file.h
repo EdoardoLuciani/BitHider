@@ -5,7 +5,7 @@
 #include "CBBS.hpp"	
 #include "cryptoTK.hpp"
 
-#define ERROR_GENERATING_SEED 200
+#define ALLOC_FAILED (DWORD)0xB0000020L
 
 enum AesFileSelection {
 	Encrypt,

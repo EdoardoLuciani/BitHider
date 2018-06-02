@@ -239,59 +239,6 @@ int8_t SecureFileDelete(int block_len, int seed_len, char *str) {
 		return(-1);
 }
 
-void RetrieveDWORDErrorExit(LPTSTR text, DWORD error_value) {
-
-	LPVOID lpDisplayBuf;
-
-	lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT, (lstrlen((LPCTSTR)text) + 40) * sizeof(TCHAR) );
-
-	StringCchPrintf((LPTSTR)lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR), TEXT("%s 0x%02XL"), text, error_value);
-
-	MessageBox(NULL, (LPCTSTR)lpDisplayBuf, NULL, MB_OK | MB_ICONWARNING);
-
-	LocalFree(lpDisplayBuf);
-	PostQuitMessage(WM_QUIT);
-}
-
-void DisplayError(LPCWSTR lpszFunction) {
-	LPVOID lpMsgBuf;
-	LPVOID lpDisplayBuf;
-	DWORD dw = GetLastError();
-
-	FormatMessage(
-		FORMAT_MESSAGE_ALLOCATE_BUFFER |
-		FORMAT_MESSAGE_FROM_SYSTEM |
-		FORMAT_MESSAGE_IGNORE_INSERTS,
-		NULL,
-		dw,
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		(LPTSTR)&lpMsgBuf,
-		0,
-		NULL);
-
-	lpDisplayBuf =
-		(LPVOID)LocalAlloc(LMEM_ZEROINIT,
-		(lstrlen((LPCTSTR)lpMsgBuf)
-			+ lstrlen((LPCTSTR)lpszFunction)
-			+ 40) // account for format string
-			* sizeof(TCHAR));
-
-	if (FAILED(StringCchPrintf((LPTSTR)lpDisplayBuf,
-		LocalSize(lpDisplayBuf) / sizeof(TCHAR),
-		TEXT("%s failed with error code %d as follows:\n%s"),
-		lpszFunction,
-		dw,
-		lpMsgBuf)))
-	{
-		printf("FATAL ERROR: Unable to output error code.\n");
-	}
-
-	_tprintf(TEXT("ERROR: %s\n"), (LPCTSTR)lpDisplayBuf);
-
-	LocalFree(lpMsgBuf);
-	LocalFree(lpDisplayBuf);
-
-}
 
 void ErrorExit(LPTSTR lpszFunction) {
 	// Retrieve the system error message for the last-error code
@@ -312,9 +259,14 @@ void ErrorExit(LPTSTR lpszFunction) {
 
 	// Display the error message and exit the process
 
+	if (lpMsgBuf == NULL) {
+		lpMsgBuf = (LPVOID*)HeapAlloc(GetProcessHeap(), HEAP_GENERATE_EXCEPTIONS, 32);
+		StringCchCopy((LPTSTR)lpMsgBuf, 32, L"See Documentation for more info");
+	}
+
 	lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT, (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
 
-	StringCchPrintf((LPTSTR)lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR), TEXT("%s failed with error %d: %s"), lpszFunction, dw, lpMsgBuf);
+	StringCchPrintf((LPTSTR)lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR), TEXT("%s failed with error 0x%02XL: %s"), lpszFunction, dw, lpMsgBuf);
 
 	MessageBox(NULL, (LPCTSTR)lpDisplayBuf, NULL, MB_OK | MB_ICONWARNING );
 
