@@ -7,6 +7,7 @@
 
 
 #define ALLOC_FAILED (DWORD)0xB0000020L
+#define OPEN_ALG_FAILED (DWORD)0xB0000030L
 
 #define SEED_LEN 32
 #define BLOCK_DIM 104857600
@@ -59,10 +60,12 @@ private:
 
 	DWORD old_protect_value_;
 
-	void EncryptFile();							//encrypt file
-	void DecryptFile();							//decrypt file
+	int8_t EncryptFileC();							//encrypt file
+	int8_t DecryptFileC();							//decrypt file
 
 	AesFileSelection value_;
+
+	BCRYPT_ALG_HANDLE algorithm_;
 
 	struct AES_ctx ctx;
 };
