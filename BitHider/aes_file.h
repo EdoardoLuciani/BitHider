@@ -8,6 +8,10 @@
 
 #define ALLOC_FAILED (DWORD)0xB0000020L
 #define OPEN_ALG_FAILED (DWORD)0xB0000030L
+#define ENCRYPT_DECRYPT_FAILED (DWORD)0xB0000040L
+#define SET_CHAIN_MODE_FAILED (DWORD)0xB0000050L
+#define CLOSE_ALG_FAILED (DWORD) 0xB0000060L
+#define DEALLOC_FAILED (DWORD)0xB0000070L
 
 #define SEED_LEN 32
 #define BLOCK_DIM 104857600
@@ -51,21 +55,19 @@ private:
 	LPVOID key_;							//pointer to KEY
 
 	HANDLE input_file_;					//input file
-	uint64_t input_file_len_;				//input file lenght
 
 	HANDLE output_file_;					//output file
-	uint64_t output_file_len_;				//input file lenght
 
 	SYSTEM_INFO sSysInfo_;
 
 	DWORD old_protect_value_;
 
-	int8_t EncryptFileC();							//encrypt file
-	int8_t DecryptFileC();							//decrypt file
+	NTSTATUS error;
+
+	void EncryptFileC();							//encrypt file
+	void DecryptFileC();							//decrypt file
 
 	AesFileSelection value_;
 
 	BCRYPT_ALG_HANDLE algorithm_;
-
-	struct AES_ctx ctx;
 };

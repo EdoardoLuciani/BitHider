@@ -232,7 +232,7 @@ void ErrorExit(LPTSTR lpszFunction) {
 
 	MessageBox(NULL, (LPCTSTR)lpDisplayBuf, NULL, MB_OK | MB_ICONWARNING );
 
-	HeapFree(GetProcessHeap(),NULL,lpDisplayBuf);
-	LocalFree(lpMsgBuf);
+	LocalFree(lpDisplayBuf);
+	HeapFree(GetProcessHeap(), 0, lpMsgBuf);
 	PostQuitMessage(WM_QUIT);
 }
