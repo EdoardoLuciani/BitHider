@@ -226,13 +226,13 @@ void ErrorExit(LPTSTR lpszFunction) {
 		StringCchCopy((LPTSTR)lpMsgBuf, 32, L"See Documentation for more info");
 	}
 
-	lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT, (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
+	lpDisplayBuf = (LPVOID)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
 
 	StringCchPrintf((LPTSTR)lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR), TEXT("%s failed with error 0x%02XL: %s"), lpszFunction, dw, lpMsgBuf);
 
 	MessageBox(NULL, (LPCTSTR)lpDisplayBuf, NULL, MB_OK | MB_ICONWARNING );
 
-	LocalFree(lpDisplayBuf);
+	HeapFree(GetProcessHeap(), 0, lpDisplayBuf);
 	HeapFree(GetProcessHeap(), 0, lpMsgBuf);
 	PostQuitMessage(WM_QUIT);
 }

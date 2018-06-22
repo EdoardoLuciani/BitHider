@@ -47,14 +47,17 @@ public:
 	
 private:
 
+	void EncryptFileC();					//encrypt file
+	void DecryptFileC();					//decrypt file
+
 	BYTE *pbData_[3];						//random seeds
 
-	pCBBS BBS;							//pointer to random generator class
+	pCBBS BBS;								//pointer to random generator class
 
-	LPVOID iv_;							//pointer to IV
+	LPVOID iv_;								//pointer to IV
 	LPVOID key_;							//pointer to KEY
 
-	HANDLE input_file_;					//input file
+	HANDLE input_file_;						//input file
 
 	HANDLE output_file_;					//output file
 
@@ -62,10 +65,9 @@ private:
 
 	DWORD old_protect_value_;
 
-	NTSTATUS error;
+	NTSTATUS error_;
 
-	void EncryptFileC();							//encrypt file
-	void DecryptFileC();							//decrypt file
+	BCRYPT_KEY_HANDLE key;
 
 	AesFileSelection value_;
 
