@@ -48,8 +48,8 @@ AesFile::AesFile(LPCWSTR input_file_path, AesFileSelection value) {
 	}
 
 	wprintf(L"Allocating Memory in Virtual Space ");
-	iv_ = VirtualAlloc(NULL, sSysInfo_.dwPageSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-	key_ = VirtualAlloc(NULL, sSysInfo_.dwPageSize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+	iv_ = VirtualAlloc(NULL, sSysInfo_.dwPageSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	key_ = VirtualAlloc(NULL, sSysInfo_.dwPageSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	if ( (iv_ == NULL) || (key_ == NULL) ) {
 		wprintf(L"[ FAIL ]\n");
 		ErrorExit((LPTSTR)L"VirtualAlloc");
@@ -74,17 +74,6 @@ AesFile::AesFile(LPCWSTR input_file_path, AesFileSelection value) {
 		wprintf(L"[ OK ]\n");
 	}
 
-
-	/*wprintf(L"Unlocking Memory ");
-	if (!VirtualUnlock(key_, sSysInfo_.dwPageSize) || !VirtualUnlock(iv_, sSysInfo_.dwPageSize)) {
-		wprintf(L"[ FAIL ]\n");
-		ErrorExit((LPTSTR)L"VirtualUnlock");
-	}
-	else {
-		wprintf(L"[ OK ]\n");
-	}*/
-
-
 	//TO REMOVE
 	wprintf(L"Key Allocation information:\n");
 
@@ -93,7 +82,7 @@ AesFile::AesFile(LPCWSTR input_file_path, AesFileSelection value) {
 
 	SecureZeroMemory(&key_data, sizeof(key_data));
 
-	key_information_buffer_dim = VirtualQuery(key_, &key_data, sSysInfo_.dwPageSize);
+	key_information_buffer_dim = VirtualQuery(key_, &key_data, sizeof(key_data) );
 
 	if (key_information_buffer_dim != 0) {
 		wprintf(L"Allocation Protect: 0x%02X\n",key_data.AllocationProtect);
@@ -115,7 +104,7 @@ AesFile::AesFile(LPCWSTR input_file_path, AesFileSelection value) {
 
 	SecureZeroMemory(&iv_data, sizeof(iv_data));
 
-	iv_information_buffer_dim = VirtualQuery(iv_, &iv_data, sSysInfo_.dwPageSize);
+	iv_information_buffer_dim = VirtualQuery(iv_, &iv_data, sizeof(iv_data) );
 	if (iv_information_buffer_dim != 0) {
 		wprintf(L"Allocation Protect: 0x%02X\n", iv_data.AllocationProtect);
 		wprintf(L"State: 0x%02X\n", iv_data.State);
@@ -166,11 +155,17 @@ AesFile::~AesFile() {
 		wprintf(L"[ FAIL ]\n");
 		ErrorExit((LPTSTR)L"VirtualUnlock");
 	}
+	else {
+		wprintf(L"[ OK ]\n");
+	}
 
 	wprintf(L"Freeing Memory ");
 	if (  (!VirtualFree(key_, 0, MEM_RELEASE)) || (!VirtualFree(iv_, 0, MEM_RELEASE)) ) {
 		wprintf(L"[ FAIL ]\n");
 		ErrorExit((LPTSTR)L"VirtualFree");
+	}
+	else {
+		wprintf(L"[ OK ]\n");
 	}
 
 	wprintf(L"Closing Algorithm ");
@@ -323,6 +318,11 @@ void AesFile::EncryptFileC() {
 		wprintf(L"[ OK ]\n");
 	}
 
+	if (!VirtualLock(iv_, sSysInfo_.dwPageSize)) {
+		ErrorExit((LPTSTR)L"VirtualLock");
+	}
+
+
 	wprintf(L"Key Memory Unprotecting ");
 	if (!VirtualProtect(key_, sSysInfo_.dwPageSize, PAGE_EXECUTE_READWRITE, &old_protect_value_)) {
 		wprintf(L"[ FAIL ]\n");
@@ -330,6 +330,10 @@ void AesFile::EncryptFileC() {
 	}
 	else {
 		wprintf(L"[ OK ]\n");
+	}
+
+	if (!VirtualLock(key_, sSysInfo_.dwPageSize)) {
+		ErrorExit((LPTSTR)L"VirtualLock");
 	}
 
 	GetFileSizeEx(input_file_, &offset);
