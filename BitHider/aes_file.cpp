@@ -23,8 +23,6 @@ AesFile::AesFile(LPCWSTR input_file_path, AesFileSelection value) {
 	wprintf(_T("Input File: %s\n"), input_file_path);
 	wprintf(_T("Output File Destination Path: %s\n"), output_file_path);
 
-	wprintf(_T("Path address: %p\n"), &output_file_path[0]);
-
 	wprintf(L"\n\n");
 
 	wprintf(L"Opening Input File ");
@@ -310,7 +308,7 @@ void AesFile::EncryptFileC() {
 	ULONG dummy;
 
 	wprintf(L"IV Memory Unprotecting ");
-	if (!VirtualProtect(iv_, sSysInfo_.dwPageSize, PAGE_EXECUTE_READWRITE, &old_protect_value_)) {
+	if (!VirtualProtect(iv_, sSysInfo_.dwPageSize, PAGE_READWRITE, &old_protect_value_)) {
 		wprintf(L"[ FAIL ]\n");
 		ErrorExit((LPTSTR)L"VirtualProtect");
 	}
@@ -324,7 +322,7 @@ void AesFile::EncryptFileC() {
 
 
 	wprintf(L"Key Memory Unprotecting ");
-	if (!VirtualProtect(key_, sSysInfo_.dwPageSize, PAGE_EXECUTE_READWRITE, &old_protect_value_)) {
+	if (!VirtualProtect(key_, sSysInfo_.dwPageSize, PAGE_READWRITE, &old_protect_value_)) {
 		wprintf(L"[ FAIL ]\n");
 		ErrorExit((LPTSTR)L"VirtualProtect");
 	}
@@ -340,23 +338,17 @@ void AesFile::EncryptFileC() {
 	blocks = offset.QuadPart / BLOCK_DIM;
 	left_over_bytes_input = offset.QuadPart % BLOCK_DIM;
 
-	left_over_bytes_output = left_over_bytes_input;
-	while (left_over_bytes_output % 16 != 0) {
-		left_over_bytes_output++;
-	}
-
-	if (blocks) {
-		wprintf(L"Blocks: %llu\n", blocks);
-		wprintf(L"Input File Left Over Bytes: %d Bytes\n", left_over_bytes_input);
-		wprintf(L"Input File Dimension: %lld Bytes\n\n", offset.QuadPart);
-
-		wprintf(L"Output File Left Over Bytes: %d Bytes\n", left_over_bytes_output);
-		wprintf(L"Output File Dimension: %lld Bytes\n\n", blocks*BLOCK_DIM + left_over_bytes_output);
+	wprintf(L"Generating Key ");
+	error_ = BCryptGenerateSymmetricKey(algorithm_, &key, NULL, NULL, (PUCHAR)key_, KEY_LEN, 0);
+	if (error_ != 0x00000000) {
+		wprintf(L"[ FAIL ]\n");
+		SetLastError(error_);
+		ErrorExit((LPTSTR)L"BCryptGenerateSymmetricKey");
 	}
 	else {
-		wprintf(L"Input File Dimension: %lld Bytes\n\n", offset.QuadPart);
-		wprintf(L"Output File Dimension: %lld Bytes\n\n", left_over_bytes_output);
+		wprintf(L"[ OK ]\n");
 	}
+
 
 	wprintf(L"Allocating Memory ");
 	data_input = (BYTE*)HeapAlloc(GetProcessHeap(), NULL, BLOCK_DIM);
@@ -365,17 +357,6 @@ void AesFile::EncryptFileC() {
 		wprintf(L"[ FAIL ]\n");
 		SetLastError(ALLOC_FAILED);
 		ErrorExit((LPTSTR)L"HeapAlloc");
-	}
-	else {
-		wprintf(L"[ OK ]\n");
-	}
-
-	wprintf(L"Generating Key ");
-	error_ = BCryptGenerateSymmetricKey(algorithm_, &key, NULL, NULL, (PUCHAR)key_, KEY_LEN, 0);
-	if (error_ != 0x00000000) {
-		wprintf(L"[ FAIL ]\n");
-		SetLastError(error_);
-		ErrorExit((LPTSTR)L"BCryptGenerateSymmetricKey");
 	}
 	else {
 		wprintf(L"[ OK ]\n");
@@ -403,8 +384,12 @@ void AesFile::EncryptFileC() {
 	SecureZeroMemory(data_input, BLOCK_DIM);
 	SecureZeroMemory(data_output, BLOCK_DIM);
 
-	data_input = (BYTE*)HeapReAlloc(GetProcessHeap(), NULL, data_input, left_over_bytes_output);
+	data_input = (BYTE*)HeapReAlloc(GetProcessHeap(), NULL, data_input, left_over_bytes_input);
+	left_over_bytes_output = AnsiX293ForcePad(GetProcessHeap(), data_input, left_over_bytes_input, 16);
+	
 	data_output = (BYTE*)HeapReAlloc(GetProcessHeap(), NULL, data_output, left_over_bytes_output);
+
+
 	if (data_input == NULL || data_output == NULL) {
 		SetLastError(ALLOC_FAILED);
 		ErrorExit((LPTSTR)L"HeapReAlloc");
@@ -431,6 +416,21 @@ void AesFile::EncryptFileC() {
 	HeapFree(GetProcessHeap(), 0, data_output);
 
 	wprintf(L"END Encryption \n");
+
+
+	if (blocks) {
+		wprintf(L"Blocks: %llu\n", blocks);
+		wprintf(L"Input File Left Over Bytes: %d Bytes\n", left_over_bytes_input);
+		wprintf(L"Input File Dimension: %lld Bytes\n\n", offset.QuadPart);
+
+		wprintf(L"Output File Left Over Bytes: %d Bytes\n", left_over_bytes_output);
+		wprintf(L"Output File Dimension: %lld Bytes\n\n", blocks*BLOCK_DIM + left_over_bytes_output);
+	}
+	else {
+		wprintf(L"Input File Dimension: %lld Bytes\n", offset.QuadPart);
+		wprintf(L"Output File Dimension: %lld Bytes\n", left_over_bytes_output);
+	}
+
 
 	wprintf(L"Destroying key ");
 	error_ = BCryptDestroyKey(key);

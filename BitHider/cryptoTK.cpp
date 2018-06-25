@@ -3,12 +3,6 @@
 #include "CBBS.hpp"
 #include "cryptoTK.hpp"
 
-
-int8_t WinBCryptoSeed(int len, BYTE *pbData) {
-BCryptGenRandom(NULL, pbData, len, BCRYPT_USE_SYSTEM_PREFERRED_RNG);
-return 0;
-}
-
 void HexStringToHexValue(char *input_str , uint8_t *hex_values , int input_string_len) {
 
     input_string_len = input_string_len /2;
@@ -32,71 +26,26 @@ void PrintHex(uint8_t * str,int len) {
         printf("\n");
 }
 
-char* GetFilename(char str[], int len) {
-
-static char file_name[256]={0};
-
-int slash_pos;
-int point_pos = NULL;
-char enc_text[20] = { "_encrypted" };
-
-int enc_text_len = strlen(enc_text);
-
-for (int i=len; i>0; i--) {
-    if (str[i] == '\\') {
-        slash_pos = i;
-        break;
-    }
-    if ( (str[i] == '.') && (point_pos == NULL)) {
-        point_pos = i;
-    }
-}
-
-
-for (int i=slash_pos+1,y=0; str[i]!='\0';i++) {
-        file_name[y] = str[i];
-
-        if (point_pos-1 == i) {
-            for (int x=0;x<enc_text_len;x++) {
-                y++;
-                file_name[y] = enc_text[x];
-            }
-        }
-        y++;
-}
-
-
-return file_name;
-
-}
-
 void SetColor(int ForgC) {
-
 
  WORD wColor;
 
-  HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
-  CONSOLE_SCREEN_BUFFER_INFO csbi;
+ HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+ CONSOLE_SCREEN_BUFFER_INFO csbi;
 
-                       //We use csbi for the wAttributes word.
- if(GetConsoleScreenBufferInfo(hStdOut, &csbi))
- {
-                 //Mask out all but the background attribute, and add in the forgournd color
+ if(GetConsoleScreenBufferInfo(hStdOut, &csbi)) {
       wColor = (csbi.wAttributes & 0xF0) + (ForgC & 0x0F);
       SetConsoleTextAttribute(hStdOut, wColor);
  }
 }
 
-unsigned long long int RandomInterval(unsigned long long int ran, int itv_max, int itv_min) {
+UINT64 RandomInterval(UINT64 ran, UINT64 itv_max, UINT64 itv_min) {
 
-
-    //(max_number + 1 - minimum_number) + minimum_number
-
-    long long int rad =  ran % (itv_max + 1 - itv_min) + itv_min ;
+    UINT64 rad =  ran % (itv_max + 1 - itv_min) + itv_min ;
     return rad;
 }
 
-int8_t SecureFileDelete(int block_len, int seed_len, char *str) {
+INT8 SecureFileDelete(int block_len, int seed_len, char *str) {
 
 
 
@@ -122,11 +71,11 @@ int8_t SecureFileDelete(int block_len, int seed_len, char *str) {
     pCBBS	BBS;								//BBS is a pointer to the instance of the class CBBS
     BBS = new CBBS;
 
-    WinBCryptoSeed(seed_len , pbData1 );
+//    WinBCryptoSeed(seed_len , pbData1 );
 
-	WinBCryptoSeed(seed_len , pbData2 );
+//	WinBCryptoSeed(seed_len , pbData2 );
 
-	WinBCryptoSeed(seed_len , pbData3 );
+//	WinBCryptoSeed(seed_len , pbData3 );
 
 
     BBS->Init(Seedp, Seedq, Seedx, seed_len);
@@ -202,6 +151,7 @@ int8_t SecureFileDelete(int block_len, int seed_len, char *str) {
 		return(-1);
 }
 
+
 void ErrorExit(LPTSTR lpszFunction) {
 	// Retrieve the system error message for the last-error code
 
@@ -235,4 +185,37 @@ void ErrorExit(LPTSTR lpszFunction) {
 	HeapFree(GetProcessHeap(), 0, lpDisplayBuf);
 	HeapFree(GetProcessHeap(), 0, lpMsgBuf);
 	PostQuitMessage(WM_QUIT);
+}
+
+
+INT AnsiX293ForcePad(HANDLE heap, LPVOID ptr, INT buf_len, UINT8 multiplier) {
+	INT final_data_len = buf_len;
+	INT8 delta_pad_bytes = 0;
+
+	do {
+		delta_pad_bytes++;
+		final_data_len++;
+	} while (final_data_len % multiplier != 0);
+
+	ptr = HeapReAlloc(heap, HEAP_ZERO_MEMORY, ptr, final_data_len);
+
+	*((PUCHAR)ptr + (final_data_len - 1)) = delta_pad_bytes;
+
+	return final_data_len;
+}
+
+
+INT AnsiX293ForceReversePad(HANDLE heap, LPVOID ptr, INT buf_len) {
+	INT8 data_to_remove;
+	INT final_len;
+
+	data_to_remove = *((PUCHAR)ptr + (buf_len - 1));
+
+	final_len = buf_len - data_to_remove;
+
+	RtlSecureZeroMemory((LPVOID)((PUCHAR)ptr + final_len), data_to_remove);
+
+	ptr = HeapReAlloc(heap, NULL, ptr, final_len);
+
+	return final_len;
 }

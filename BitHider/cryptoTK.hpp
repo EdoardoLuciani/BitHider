@@ -7,14 +7,14 @@
 #define NT_SUCCESS(Status)          (((NTSTATUS)(Status)) >= 0)
 
 
-int8_t WinBCryptoSeed							(int,   BYTE *  );						//The buffer HAS to be allocated
 void HexStringToHexValue						(char*,uint8_t*,int);					//The buffers has to be allocated
 void PrintHex									(uint8_t*,int);
-char* GetFilename								(char [],int len);						//dangerous, the buffer HAS to be allocated
 void SetColor									(int);
-uint64_t RandomInterval							(unsigned long long int, int, int);
-int8_t SecureFileDelete							(int, int,char *);
+UINT64 RandomInterval							(UINT64, UINT64, UINT64);
+INT8 SecureFileDelete							(int, int,char *);						//DO NOT USE, looking for a replacement
 
 void ErrorExit									(LPTSTR);
+INT AnsiX293ForcePad							(HANDLE, LPVOID, INT, UINT8);			//The buffer reallocates automatically
+INT AnsiX293ForceReversePad						(HANDLE, LPVOID, INT);					//The buffer reallocates automatically
 
 
