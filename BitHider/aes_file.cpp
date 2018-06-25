@@ -72,51 +72,6 @@ AesFile::AesFile(LPCWSTR input_file_path, AesFileSelection value) {
 		wprintf(L"[ OK ]\n");
 	}
 
-	//TO REMOVE
-	wprintf(L"Key Allocation information:\n");
-
-	_MEMORY_BASIC_INFORMATION key_data;
-	int key_information_buffer_dim;
-
-	SecureZeroMemory(&key_data, sizeof(key_data));
-
-	key_information_buffer_dim = VirtualQuery(key_, &key_data, sizeof(key_data) );
-
-	if (key_information_buffer_dim != 0) {
-		wprintf(L"Allocation Protect: 0x%02X\n",key_data.AllocationProtect);
-		wprintf(L"State: 0x%02X\n", key_data.State);
-		wprintf(L"Protect: 0x%02X\n", key_data.Protect);
-		wprintf(L"Type: 0x%02X\n", key_data.Type);
-	}
-	else {
-		ErrorExit((LPTSTR)L"VirtualQuery");
-	}
-	
-
-	//	---------------------------------------------------------------------------	//
-
-	wprintf(L"IV Allocation information:\n");
-
-	_MEMORY_BASIC_INFORMATION iv_data;
-	int iv_information_buffer_dim;
-
-	SecureZeroMemory(&iv_data, sizeof(iv_data));
-
-	iv_information_buffer_dim = VirtualQuery(iv_, &iv_data, sizeof(iv_data) );
-	if (iv_information_buffer_dim != 0) {
-		wprintf(L"Allocation Protect: 0x%02X\n", iv_data.AllocationProtect);
-		wprintf(L"State: 0x%02X\n", iv_data.State);
-		wprintf(L"Protect: 0x%02X\n", iv_data.Protect);
-		wprintf(L"Type: 0x%02X\n", iv_data.Type);
-	}
-	else {
-		ErrorExit((LPTSTR)L"VirtualQuery");
-	}
-	
-
-	//TO REMOVE
-
-
 	wprintf(L"Inizializing Algorithm ");
 	error_ = BCryptOpenAlgorithmProvider(&algorithm_, BCRYPT_AES_ALGORITHM, NULL, NULL);
 	if (error_ != 0x00000000) {
@@ -303,8 +258,8 @@ void AesFile::EncryptFileC() {
 	LARGE_INTEGER offset;
 	LPVOID data_input;
 	LPVOID data_output;
-	uint64_t blocks;
-	int left_over_bytes_input,left_over_bytes_output;
+	INT blocks;
+	INT left_over_bytes_input,left_over_bytes_output;
 	ULONG dummy;
 
 	wprintf(L"IV Memory Unprotecting ");
@@ -339,7 +294,7 @@ void AesFile::EncryptFileC() {
 	left_over_bytes_input = offset.QuadPart % BLOCK_DIM;
 
 	wprintf(L"Generating Key ");
-	error_ = BCryptGenerateSymmetricKey(algorithm_, &key, NULL, NULL, (PUCHAR)key_, KEY_LEN, 0);
+	error_ = BCryptGenerateSymmetricKey(algorithm_, &key_handle_, NULL, NULL, (PUCHAR)key_, KEY_LEN, 0);
 	if (error_ != 0x00000000) {
 		wprintf(L"[ FAIL ]\n");
 		SetLastError(error_);
@@ -370,7 +325,7 @@ void AesFile::EncryptFileC() {
 			ErrorExit((LPTSTR)L"ReadFile");
 		}
 
-		error_ = BCryptEncrypt(key, (PUCHAR)data_input, BLOCK_DIM, NULL, (PUCHAR)iv_, IV_LEN, (PUCHAR)data_output, BLOCK_DIM, NULL, BCRYPT_PAD_NONE);
+		error_ = BCryptEncrypt(key_handle_, (PUCHAR)data_input, BLOCK_DIM, NULL, (PUCHAR)iv_, IV_LEN, (PUCHAR)data_output, BLOCK_DIM, NULL, BCRYPT_PAD_NONE);
 		if (error_ != 0x00000000) {
 			SetLastError(error_);
 			ErrorExit((LPTSTR)L"BCryptEncrypt");
@@ -399,7 +354,7 @@ void AesFile::EncryptFileC() {
 		ErrorExit((LPTSTR)L"ReadFile");
 	}
 
-	error_ = BCryptEncrypt(key, (PUCHAR)data_input, left_over_bytes_output, NULL, (PUCHAR)iv_, IV_LEN, (PUCHAR)data_output, left_over_bytes_output, &dummy, 0);
+	error_ = BCryptEncrypt(key_handle_, (PUCHAR)data_input, left_over_bytes_output, NULL, (PUCHAR)iv_, IV_LEN, (PUCHAR)data_output, left_over_bytes_output, &dummy, 0);
 	if (error_ != 0x00000000) {
 		SetLastError(error_);
 		ErrorExit((LPTSTR)L"BCryptEncrypt");
@@ -433,7 +388,7 @@ void AesFile::EncryptFileC() {
 
 
 	wprintf(L"Destroying key ");
-	error_ = BCryptDestroyKey(key);
+	error_ = BCryptDestroyKey(key_handle_);
 	if (error_ != 0x00000000) {
 		wprintf(L"[ FAIL ]\n");
 		SetLastError(error_);
@@ -450,16 +405,17 @@ void AesFile::EncryptFileC() {
 void AesFile::DecryptFileC() {
 
 	LARGE_INTEGER offset;
-	LPVOID data;
+	LPVOID data_input;
+	LPVOID data_output;
+	INT blocks;
+	INT left_over_bytes_input, left_over_bytes_output;
+	ULONG dummy;
 
 	GetFileSizeEx(input_file_, &offset);
 
 	wprintf(L"File Dimension %lld Bytes", offset.QuadPart);
 
-	data = (BYTE*)HeapAlloc(GetProcessHeap(), NULL, SEED_LEN);
-
-
-
+	//data = (BYTE*)HeapAlloc(GetProcessHeap(), NULL, SEED_LEN);
 
 
 	//ReadFile(input_file_,data)

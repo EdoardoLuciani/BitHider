@@ -38,8 +38,8 @@ public:
 	void GenerateIv();						//generate a random IV from BBS, IMPORTANT: init_gen HAS TO BE CALLED FIRST
 	void GenerateKey();						//generate a random KEY from BBS, IMPORTANT: init_gen HAS TO BE CALLED FIRST
 
-	int GetIv(char iv [], int len);			//get IV from user input
-	int GetKey(char key [], int len);		//get KEY from user input
+	int GetIv();							//get IV from user input
+	int GetKey();							//get KEY from user input
 
 	int ExecSelectedAction();				//execute the action defined by enum list
 
@@ -67,7 +67,7 @@ private:
 
 	NTSTATUS error_;
 
-	BCRYPT_KEY_HANDLE key;
+	BCRYPT_KEY_HANDLE key_handle_;
 
 	AesFileSelection value_;
 
