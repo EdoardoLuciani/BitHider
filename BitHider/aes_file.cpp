@@ -94,7 +94,24 @@ AesFile::AesFile(LPCWSTR input_file_path, AesFileSelection value) {
 		wprintf(L"[ OK ]\n");
 	}
 
+
+	hIn = CreateFileW(L"CONIN$", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, 0, OPEN_EXISTING, 0, 0);
+	if (hIn == INVALID_HANDLE_VALUE) {
+		ErrorExit((LPTSTR)L"CreateConsoleInputHandle");
+	}
+
+	hOut = CreateConsoleScreenBuffer(GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, 0, CONSOLE_TEXTMODE_BUFFER, NULL);
+	if (hOut == INVALID_HANDLE_VALUE) {
+		ErrorExit((LPTSTR)L"CreateConsoleOutputHandle");
+	}
+
+	GetConsoleMode(hIn, &input_console_mode_);
+	input_console_mode_ = 0;
+	input_console_mode_ = ENABLE_EXTENDED_FLAGS | ENABLE_INSERT_MODE | ENABLE_LINE_INPUT | ENABLE_MOUSE_INPUT | ENABLE_PROCESSED_INPUT | ENABLE_QUICK_EDIT_MODE | ENABLE_VIRTUAL_TERMINAL_INPUT;
+	SetConsoleMode(hIn, input_console_mode_);
+
 	wprintf(L"\n");
+
 }
 
 
@@ -134,11 +151,15 @@ AesFile::~AesFile() {
 
 	CloseHandle(input_file_);
 	CloseHandle(output_file_);
+	
+	CloseHandle(hIn);
+	CloseHandle(hOut);
 }
 
 
 int AesFile::InitGen() {
 
+	BYTE *pbData_[3];
 	int random_init_status_code;
 
 	//Starting Seed Generation
@@ -236,6 +257,56 @@ void AesFile::GenerateKey() {
 		wprintf(L"[ OK ]\n");
 	}
 	wprintf(L"\n");
+}
+
+void AesFile::GetIv() {
+
+	LPVOID iv_string;
+
+	iv_string = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, IV_LEN*2);
+	SetConsoleActiveScreenBuffer(hOut);
+
+	do {
+	WriteConsoleA(hOut, "Insert IV (32 characters in HEX) Data will be displayed after, if this message repeats the previous input is not valid: ", lstrlenA("Insert IV (32 characters in HEX) Data will be displayed after, if this message repeats the previous input is not valid: "), &cWritten, NULL);
+	ReadConsoleA(hIn, iv_string, IV_LEN * 2, &cRead, NULL);
+	FlushConsoleInputBuffer(hIn);
+	NewLine(hOut);
+	} while ((CheckHexString(iv_string, IV_LEN * 2) != 0) || (cRead != IV_LEN * 2)   );
+
+
+	WriteConsoleA(hOut, "Data will be displayed for 10 seconds!!!", lstrlenA("Data will be displayed for 10 seconds!!!"), &cWritten, NULL);
+	NewLine(hOut);
+	WriteConsoleA(hOut, iv_string, IV_LEN * 2, &cWritten, NULL);
+	Sleep(8000);
+
+	HeapFree(GetProcessHeap(), NULL, iv_string);
+	ClearOutputBuffer(hOut);
+	HexStringToHexValue((char*)iv_string, (uint8_t*)iv_, IV_LEN * 2);
+}
+
+void AesFile::GetKey() {
+
+	LPVOID key_string;
+
+	key_string = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, KEY_LEN * 2);
+
+	SetConsoleActiveScreenBuffer(hOut);
+
+	do {
+		WriteConsoleA(hOut, "Insert KEY (64 characters in HEX) Data will be displayed after, if this message repeats the previous input is not valid: ", lstrlenA("Insert KEY (64 characters in HEX) Data will be displayed after, if this message repeats the previous input is not valid: "), &cWritten, NULL);
+		FlushConsoleInputBuffer(hIn);
+		ReadConsoleA(hIn, key_string, KEY_LEN * 2, &cRead, NULL);
+		NewLine(hOut);
+	} while ((CheckHexString(key_string, KEY_LEN * 2) != 0) || (cRead != KEY_LEN * 2));
+
+	WriteConsoleA(hOut, "Data will be displayed for 10 seconds!!!", lstrlenA("Data will be displayed for 10 seconds!!!"), &cWritten, NULL);
+	NewLine(hOut);
+	WriteConsoleA(hOut, key_string, KEY_LEN * 2, &cWritten, NULL);
+	Sleep(8000);
+
+	HeapFree(GetProcessHeap(), NULL, key_string);
+	ClearOutputBuffer(hOut);
+	HexStringToHexValue((char*)key_string, (uint8_t*)key_, KEY_LEN * 2);
 }
 
 

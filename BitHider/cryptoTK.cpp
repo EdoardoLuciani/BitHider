@@ -3,7 +3,7 @@
 #include "CBBS.hpp"
 #include "cryptoTK.hpp"
 
-void HexStringToHexValue(char *input_str , uint8_t *hex_values , int input_string_len) {
+void HexStringToHexValue(char *input_str , uint8_t *output_hex_values , int input_string_len) {
 
     input_string_len = input_string_len /2;
 
@@ -14,36 +14,38 @@ void HexStringToHexValue(char *input_str , uint8_t *hex_values , int input_strin
     tmp[0] = input_str[ i+i ];
     tmp[1] = input_str[ i+i+1 ];
 
-    sscanf(tmp, "%hhx",&hex_values[i]);
+    sscanf(tmp, "%hhx",&output_hex_values[i]);
     }
 }
 
-void PrintHex(uint8_t * str,int len) {
 
-        for(int i=0;i<len;i++) {
-        printf("%.2x", str[i]);
+void PrintHex(uint8_t * hex,int buffer_bytes) {
+
+        for(int i=0;i<buffer_bytes;i++) {
+        printf("%.2x", hex[i]);
         }
         printf("\n");
 }
 
-void SetColor(int ForgC) {
 
- WORD wColor;
+INT8 CheckHexString(LPVOID str_add, INT str_len) {
 
- HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
- CONSOLE_SCREEN_BUFFER_INFO csbi;
+	for (int i = 0; i < str_len; i++) {
+		if ((*((PUCHAR)str_add + i) < 48) || (*((PUCHAR)str_add + i) > 57) && (*((PUCHAR)str_add + i) < 97) || (*((PUCHAR)str_add + i) > 102)) {
+			return -1;
+		}
 
- if(GetConsoleScreenBufferInfo(hStdOut, &csbi)) {
-      wColor = (csbi.wAttributes & 0xF0) + (ForgC & 0x0F);
-      SetConsoleTextAttribute(hStdOut, wColor);
- }
+	}
+	return 0;
 }
 
-UINT64 RandomInterval(UINT64 ran, UINT64 itv_max, UINT64 itv_min) {
 
-    UINT64 rad =  ran % (itv_max + 1 - itv_min) + itv_min ;
+UINT64 RandomInterval(UINT64 rand_num, UINT64 itv_max, UINT64 itv_min) {
+
+    UINT64 rad =  rand_num % (itv_max + 1 - itv_min) + itv_min ;
     return rad;
 }
+
 
 INT8 SecureFileDelete(int block_len, int seed_len, char *str) {
 
@@ -218,4 +220,209 @@ INT AnsiX293ForceReversePad(HANDLE heap, LPVOID ptr, INT buf_len) {
 	ptr = HeapReAlloc(heap, NULL, ptr, final_len);
 
 	return final_len;
+}
+
+
+CHAR PressAnyKey(HANDLE hstdin, HANDLE hstout, const WCHAR* prompt = NULL) {
+	CHAR  ch;
+	DWORD  mode;
+	DWORD  count;
+	COORD exitPrompcoord;
+	CONSOLE_SCREEN_BUFFER_INFO stoutinfo;
+
+	GetConsoleScreenBufferInfo(hstout, &stoutinfo);
+	exitPrompcoord = stoutinfo.dwCursorPosition;
+
+	// Prompt the user
+	if (prompt == NULL) prompt = L"Press any key to continue...\n";
+	WriteConsoleW(hstout, prompt, lstrlenW(prompt), &count, NULL);
+
+	// Switch to raw mode
+	GetConsoleMode(hstdin, &mode);
+	SetConsoleMode(hstdin, 0);
+
+	// Wait for the user's response
+	WaitForSingleObject(hstdin, INFINITE);
+
+	// Read the (single) key pressed
+	ReadConsoleA(hstdin, &ch, 1, &count, NULL);
+
+	FillConsoleOutputCharacterW(hstout, (TCHAR)' ', lstrlenW(prompt), exitPrompcoord, &count);
+	SetConsoleCursorPosition(hstout, exitPrompcoord);
+
+	// Restore the console to its previous state
+	SetConsoleMode(hstdin, mode);
+
+	// Return the key code
+	return ch;
+}
+
+
+int ScrollByRelativeCoord(HANDLE hStdout, int iRows) {
+	CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
+	SMALL_RECT srctWindow;
+
+	// Get the current screen buffer window position. 
+
+	if (!GetConsoleScreenBufferInfo(hStdout, &csbiInfo))
+	{
+		printf("GetConsoleScreenBufferInfo (%d)\n", GetLastError());
+		return 0;
+	}
+
+	// Check whether the window is too close to the screen buffer top
+
+	if (csbiInfo.srWindow.Top >= iRows)
+	{
+		srctWindow.Top = -(SHORT)iRows;     // move top up
+		srctWindow.Bottom = -(SHORT)iRows;  // move bottom up 
+		srctWindow.Left = 0;         // no change 
+		srctWindow.Right = 0;        // no change 
+
+		if (!SetConsoleWindowInfo(
+			hStdout,          // screen buffer handle 
+			FALSE,            // relative coordinates
+			&srctWindow))     // specifies new location 
+		{
+			printf("SetConsoleWindowInfo (%d)\n", GetLastError());
+			return 0;
+		}
+		return iRows;
+	}
+	else
+	{
+		printf("\nCannot scroll; the window is too close to the top.\n");
+		return 0;
+	}
+}
+
+
+void SetColor(HANDLE hStdOut, int ForgC) {
+
+	WORD wColor;
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+
+	if (GetConsoleScreenBufferInfo(hStdOut, &csbi)) {
+		wColor = (csbi.wAttributes & 0xF0) + (ForgC & 0x0F);
+		SetConsoleTextAttribute(hStdOut, wColor);
+	}
+}
+
+
+void ClearOutputBuffer(HANDLE hConsole) {
+	COORD coordScreen = { 0, 0 };    // home for the cursor 
+	DWORD cCharsWritten;
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+	DWORD dwConSize;
+
+	// Get the number of character cells in the current buffer. 
+
+	if (!GetConsoleScreenBufferInfo(hConsole, &csbi))
+	{
+		return;
+	}
+
+	dwConSize = csbi.dwSize.X * csbi.dwSize.Y;
+
+	// Fill the entire screen with blanks.
+
+	if (!FillConsoleOutputCharacter(hConsole,        // Handle to console screen buffer 
+		(TCHAR) ' ',     // Character to write to the buffer
+		dwConSize,       // Number of cells to write 
+		coordScreen,     // Coordinates of first cell 
+		&cCharsWritten))// Receive number of characters written
+	{
+		return;
+	}
+
+	// Get the current text attribute.
+
+	if (!GetConsoleScreenBufferInfo(hConsole, &csbi))
+	{
+		return;
+	}
+
+	// Set the buffer's attributes accordingly.
+
+	if (!FillConsoleOutputAttribute(hConsole,         // Handle to console screen buffer 
+		csbi.wAttributes, // Character attributes to use
+		dwConSize,        // Number of cells to set attribute 
+		coordScreen,      // Coordinates of first cell 
+		&cCharsWritten)) // Receive number of characters written
+	{
+		return;
+	}
+
+	// Put the cursor at its home coordinates.
+
+	SetConsoleCursorPosition(hConsole, coordScreen);
+}
+
+void NewLine(HANDLE hStdout) {
+
+	CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
+
+	if (!GetConsoleScreenBufferInfo(hStdout, &csbiInfo))
+	{
+		MessageBox(NULL, TEXT("GetConsoleScreenBufferInfo"),
+			TEXT("Console Error"), MB_OK);
+		return;
+	}
+
+	csbiInfo.dwCursorPosition.X = 0;
+
+	// If it is the last line in the screen buffer, scroll 
+	// the buffer up. 
+
+	if ((csbiInfo.dwSize.Y - 1) == csbiInfo.dwCursorPosition.Y)
+	{
+		ScrollScreenBuffer(hStdout, 1, csbiInfo);
+	}
+
+	// Otherwise, advance the cursor to the next line. 
+
+	else csbiInfo.dwCursorPosition.Y += 1;
+
+	if (!SetConsoleCursorPosition(hStdout,
+		csbiInfo.dwCursorPosition))
+	{
+		MessageBox(NULL, TEXT("SetConsoleCursorPosition"),
+			TEXT("Console Error"), MB_OK);
+		return;
+	}
+}
+
+void ScrollScreenBuffer(HANDLE h, INT x, CONSOLE_SCREEN_BUFFER_INFO csbiInfo) {
+	SMALL_RECT srctScrollRect, srctClipRect;
+	CHAR_INFO chiFill;
+	COORD coordDest;
+
+	srctScrollRect.Left = 0;
+	srctScrollRect.Top = 1;
+	srctScrollRect.Right = csbiInfo.dwSize.X - (SHORT)x;
+	srctScrollRect.Bottom = csbiInfo.dwSize.Y - (SHORT)x;
+
+	// The destination for the scroll rectangle is one row up. 
+
+	coordDest.X = 0;
+	coordDest.Y = 0;
+
+	// The clipping rectangle is the same as the scrolling rectangle. 
+	// The destination row is left unchanged. 
+
+	srctClipRect = srctScrollRect;
+
+	// Set the fill character and attributes. 
+
+	chiFill.Attributes = FOREGROUND_RED | FOREGROUND_INTENSITY;
+	chiFill.Char.AsciiChar = (char)' ';
+
+	// Scroll up one line. 
+
+	ScrollConsoleScreenBuffer(
+		h,               // screen buffer handle 
+		&srctScrollRect, // scrolling rectangle 
+		&srctClipRect,   // clipping rectangle 
+		coordDest,       // top left destination cell 
+		&chiFill);       // fill character and color 
 }

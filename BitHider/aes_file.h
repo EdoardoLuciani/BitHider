@@ -38,8 +38,8 @@ public:
 	void GenerateIv();						//generate a random IV from BBS, IMPORTANT: init_gen HAS TO BE CALLED FIRST
 	void GenerateKey();						//generate a random KEY from BBS, IMPORTANT: init_gen HAS TO BE CALLED FIRST
 
-	int GetIv();							//get IV from user input
-	int GetKey();							//get KEY from user input
+	void GetIv();							//get IV from user input
+	void GetKey();							//get KEY from user input
 
 	int ExecSelectedAction();				//execute the action defined by enum list
 
@@ -50,8 +50,6 @@ private:
 	void EncryptFileC();					//encrypt file
 	void DecryptFileC();					//decrypt file
 
-	BYTE *pbData_[3];						//random seeds
-
 	pCBBS BBS;								//pointer to random generator class
 
 	LPVOID iv_;								//pointer to IV
@@ -61,9 +59,11 @@ private:
 
 	HANDLE output_file_;					//output file
 
+	HANDLE hIn, hOut;
+
 	SYSTEM_INFO sSysInfo_;
 
-	DWORD old_protect_value_;
+	DWORD old_protect_value_, input_console_mode_, cRead, cWritten;
 
 	NTSTATUS error_;
 
