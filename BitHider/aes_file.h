@@ -15,6 +15,7 @@
 
 #define SEED_LEN 32
 #define BLOCK_DIM 104857600
+#define BLOCK_DIM_DOUBLE 104857600.0
 #define MAX_STR_LEN 256
 #define IV_LEN 16               //IV MUST be 16 Bytes, not my fault, but the AES_256 algorithm
 #define KEY_LEN 32				//KEY MUST be 32 Bytes  (AES-256 means 256 bit key   256/8=32)
