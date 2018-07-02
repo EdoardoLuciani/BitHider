@@ -44,7 +44,7 @@ public:
 
 	int ExecSelectedAction();				//execute the action defined by enum list
 
-	void PrintInfo();						//prints out key and iv
+	void PrintData();
 	
 private:
 
@@ -53,24 +53,25 @@ private:
 
 	pCBBS BBS;								//pointer to random generator class
 
-	LPVOID iv_;								//pointer to IV
-	LPVOID key_;							//pointer to KEY
+	LPVOID iv_,key_;
+	LPVOID data_input_, data_output_;
 
-	HANDLE input_file_;						//input file
-
-	HANDLE output_file_;					//output file
-
+	HANDLE input_file_, output_file_;
 	HANDLE hIn, hOut;
 
 	SYSTEM_INFO sSysInfo_;
 
 	DWORD old_protect_value_, input_console_mode_, cRead, cWritten;
 
+	ULONG dummy;
+
 	NTSTATUS error_;
 
 	BCRYPT_KEY_HANDLE key_handle_;
+	BCRYPT_ALG_HANDLE algorithm_;
 
 	AesFileSelection value_;
 
-	BCRYPT_ALG_HANDLE algorithm_;
+	INT left_over_bytes_input_, left_over_bytes_output_, blocks_;
+	LARGE_INTEGER offset_;
 };
