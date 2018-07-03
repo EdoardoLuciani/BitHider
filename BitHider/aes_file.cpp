@@ -80,15 +80,17 @@ AesFile::AesFile(LPCWSTR input_file_path, AesFileSelection value) {
 
 AesFile::~AesFile() {
 
-	SecureZeroMemory(key_, KEY_LEN);
-	SecureZeroMemory(iv_, IV_LEN);
+	HeapFree(GetProcessHeap(), 0, data_input);
+	HeapFree(GetProcessHeap(), 0, data_output);
 
 	error_ = BCryptDestroyKey(key_handle_);
 	if (error_ != 0x00000000) {
 		SetLastError(error_);
-		ErrorExit((LPTSTR)L"BCryptDestoryKey");
+		ErrorExit((LPTSTR)L"BCryptDestroyKey");
 	}
 
+	SecureZeroMemory(key_, KEY_LEN);
+	SecureZeroMemory(iv_, IV_LEN);
 
 	if ( (!VirtualUnlock(key_, sSysInfo_.dwPageSize)) || (!VirtualUnlock(iv_, sSysInfo_.dwPageSize)) ) {
 		ErrorExit((LPTSTR)L"VirtualUnlock");
@@ -241,28 +243,39 @@ void AesFile::GetKey() {
 
 int AesFile::ExecSelectedAction() {
 
-	GetFileSizeEx(input_file_, &offset_);
-	blocks_ = offset_.QuadPart / BLOCK_DIM;
-	left_over_bytes_input_ = offset_.QuadPart % BLOCK_DIM;
+	GetFileSizeEx(input_file_, &offset);
+	blocks = offset.QuadPart / BLOCK_DIM;
+	left_over_bytes_input = offset.QuadPart % BLOCK_DIM;
 
-	if (blocks_) {
-	data_input_ = (BYTE*)HeapAlloc(GetProcessHeap(), NULL, BLOCK_DIM);
-	data_output_ = (BYTE*)HeapAlloc(GetProcessHeap(), NULL, BLOCK_DIM);
+	if (!VirtualProtect(iv_, sSysInfo_.dwPageSize, PAGE_READWRITE, &old_protect_value_)) {
+		ErrorExit((LPTSTR)L"VirtualProtect");
 	}
-	else {
-	data_input_ = (BYTE*)HeapAlloc(GetProcessHeap(), NULL, 10);
-	data_output_ = (BYTE*)HeapAlloc(GetProcessHeap(), NULL, 10);
+
+
+	if (!VirtualLock(iv_, sSysInfo_.dwPageSize)) {
+		ErrorExit((LPTSTR)L"VirtualLock");
 	}
-	
-	if (data_input_ == NULL || data_output_ == NULL) {
-		SetLastError(ALLOC_FAILED);
-		ErrorExit((LPTSTR)L"HeapAlloc");
+
+	if (!VirtualProtect(key_, sSysInfo_.dwPageSize, PAGE_READWRITE, &old_protect_value_)) {
+		ErrorExit((LPTSTR)L"VirtualProtect");
 	}
+
+	if (!VirtualLock(key_, sSysInfo_.dwPageSize)) {
+		ErrorExit((LPTSTR)L"VirtualLock");
+	}
+
 
 	error_ = BCryptGenerateSymmetricKey(algorithm_, &key_handle_, NULL, NULL, (PUCHAR)key_, KEY_LEN, 0);
 	if (error_ != 0x00000000) {
 		SetLastError(error_);
 		ErrorExit((LPTSTR)L"BCryptGenerateSymmetricKey");
+	}
+
+	data_input = (BYTE*)HeapAlloc(GetProcessHeap(), NULL, BLOCK_DIM);
+	data_output = (BYTE*)HeapAlloc(GetProcessHeap(), NULL, BLOCK_DIM);
+	if (data_input == NULL || data_output == NULL) {
+		SetLastError(ALLOC_FAILED);
+		ErrorExit((LPTSTR)L"HeapAlloc");
 	}
 
 
@@ -278,24 +291,6 @@ int AesFile::ExecSelectedAction() {
 
 void AesFile::EncryptFileC() {
 
-	if (!VirtualProtect(iv_, sSysInfo_.dwPageSize, PAGE_READWRITE, &old_protect_value_)) {
-		ErrorExit((LPTSTR)L"VirtualProtect");
-	}
-
-
-	if (!VirtualLock(iv_, sSysInfo_.dwPageSize)) {
-		ErrorExit((LPTSTR)L"VirtualLock");
-	}
-
-	if (!VirtualProtect(key_, sSysInfo_.dwPageSize, PAGE_READWRITE, &old_protect_value_)) {
-		ErrorExit((LPTSTR)L"VirtualProtect");
-	}
-
-
-	if (!VirtualLock(key_, sSysInfo_.dwPageSize)) {
-		ErrorExit((LPTSTR)L"VirtualLock");
-	}
-
 	wprintf(L"Encryption Started\n");
 
 	int dwElapsed = 0;
@@ -305,22 +300,22 @@ void AesFile::EncryptFileC() {
 	DWORD end = 0;
 	DOUBLE medium_speed = 0;
 
-	for (uint64_t i = 1; i <= blocks_; i++) {
+	for (uint64_t i = 1; i <= blocks; i++) {
 		start = GetTickCount();
 
-		wprintf(L"Encrypting Block Number: %d\\%d  %.2f %% %lf MB/s \n", i, blocks_, 100.0*i / blocks_, speed);
+		wprintf(L"Encrypting Block Number: %d\\%d  %.2f %% %lf MB/s \n", i, blocks, 100.0*i / blocks, speed);
 		
-		if ( !ReadFile(input_file_, data_input_, BLOCK_DIM, NULL, NULL)) {
+		if ( !ReadFile(input_file_, data_input, BLOCK_DIM, NULL, NULL)) {
 			ErrorExit((LPTSTR)L"ReadFile");
 		}
 
-		error_ = BCryptEncrypt(key_handle_, (PUCHAR)data_input_, BLOCK_DIM, NULL, (PUCHAR)iv_, IV_LEN, (PUCHAR)data_output_, BLOCK_DIM, &dummy, 0);
+		error_ = BCryptEncrypt(key_handle_, (PUCHAR)data_input, BLOCK_DIM, NULL, (PUCHAR)iv_, IV_LEN, (PUCHAR)data_output, BLOCK_DIM, &dummy, 0);
 		if (error_ != 0x00000000) {
 			SetLastError(error_);
 			ErrorExit((LPTSTR)L"BCryptEncrypt");
 		}
 
-		if (!WriteFile(output_file_, data_output_, BLOCK_DIM, NULL, NULL)) {
+		if (!WriteFile(output_file_, data_output, BLOCK_DIM, NULL, NULL)) {
 			ErrorExit((LPTSTR)L"WriteFile");
 		}
 
@@ -331,64 +326,41 @@ void AesFile::EncryptFileC() {
 		medium_speed = (medium_speed + speed) / (i);
 	}
 
-	SecureZeroMemory(data_input_, BLOCK_DIM);
-	SecureZeroMemory(data_output_, BLOCK_DIM);
+	SecureZeroMemory(data_input, BLOCK_DIM);
+	SecureZeroMemory(data_output, BLOCK_DIM);
 
-	data_input_ = (BYTE*)HeapReAlloc(GetProcessHeap(), NULL, data_input_, left_over_bytes_input_);
-	left_over_bytes_output_ = AnsiX293ForcePad(GetProcessHeap(), data_input_, left_over_bytes_input_, 16);
+	data_input = (BYTE*)HeapReAlloc(GetProcessHeap(), NULL, data_input, left_over_bytes_input);
+	left_over_bytes_output = AnsiX293ForcePad(GetProcessHeap(), data_input, left_over_bytes_input, 16);
 	
-	data_output_ = (BYTE*)HeapReAlloc(GetProcessHeap(), NULL, data_output_, left_over_bytes_output_);
+	data_output = (BYTE*)HeapReAlloc(GetProcessHeap(), NULL, data_output, left_over_bytes_output);
 
-	if (data_input_ == NULL || data_output_ == NULL) {
+	if (data_input == NULL || data_output == NULL) {
 		SetLastError(ALLOC_FAILED);
 		ErrorExit((LPTSTR)L"HeapReAlloc");
 	}
 
-	if (!ReadFile(input_file_, data_input_, left_over_bytes_input_, NULL, NULL)) {
+	if (!ReadFile(input_file_, data_input, left_over_bytes_input, NULL, NULL)) {
 		ErrorExit((LPTSTR)L"ReadFile");
 	}
 
-	error_ = BCryptEncrypt(key_handle_, (PUCHAR)data_input_, left_over_bytes_output_, NULL, (PUCHAR)iv_, IV_LEN, (PUCHAR)data_output_, left_over_bytes_output_, &dummy, 0);
+	error_ = BCryptEncrypt(key_handle_, (PUCHAR)data_input, left_over_bytes_output, NULL, (PUCHAR)iv_, IV_LEN, (PUCHAR)data_output, left_over_bytes_output, &dummy, 0);
 	if (error_ != 0x00000000) {
 		SetLastError(error_);
 		ErrorExit((LPTSTR)L"BCryptEncrypt");
 	}
 
-	if (!WriteFile(output_file_, data_output_, left_over_bytes_output_, NULL, NULL)) {
+	if (!WriteFile(output_file_, data_output, left_over_bytes_output, NULL, NULL)) {
 		ErrorExit((LPTSTR)L"WriteFile");
 	}
 	
-	SecureZeroMemory(data_input_, left_over_bytes_output_);
-	SecureZeroMemory(data_output_, left_over_bytes_output_);
+	SecureZeroMemory(data_input, left_over_bytes_output);
+	SecureZeroMemory(data_output, left_over_bytes_output);
 
-	HeapFree(GetProcessHeap(), 0, data_input_);
-	HeapFree(GetProcessHeap(), 0, data_output_);
-
-	wprintf(L"END Encryption\n\n");
+	wprintf(L"END Encryption \n\n");
 }
 
 
 void AesFile::DecryptFileC() {
-
-	if (!VirtualProtect(iv_, sSysInfo_.dwPageSize, PAGE_READWRITE, &old_protect_value_)) {
-
-		ErrorExit((LPTSTR)L"VirtualProtect");
-	}
-
-
-	if (!VirtualLock(iv_, sSysInfo_.dwPageSize)) {
-		ErrorExit((LPTSTR)L"VirtualLock");
-	}
-
-
-	if (!VirtualProtect(key_, sSysInfo_.dwPageSize, PAGE_READWRITE, &old_protect_value_)) {
-		ErrorExit((LPTSTR)L"VirtualProtect");
-	}
-
-
-	if (!VirtualLock(key_, sSysInfo_.dwPageSize)) {
-		ErrorExit((LPTSTR)L"VirtualLock");
-	}
 
 	wprintf(L"Decryption Started\n");
 
@@ -399,22 +371,22 @@ void AesFile::DecryptFileC() {
 	DWORD end = 0;
 	DOUBLE medium_speed = 0;
 
-	for (uint64_t i = 1; i <= blocks_; i++) {
+	for (uint64_t i = 1; i <= blocks; i++) {
 		start = GetTickCount();
 
-		wprintf(L"Decrypting Block Number: %d\\%d  %.2f %% %lf MB/s \n", i, blocks_, 100.0*i / blocks_, speed);
+		wprintf(L"Decrypting Block Number: %d\\%d  %.2f %% %lf MB/s \n", i, blocks, 100.0*i / blocks, speed);
 
-		if (!ReadFile(input_file_, data_input_, BLOCK_DIM, NULL, NULL)) {
+		if (!ReadFile(input_file_, data_input, BLOCK_DIM, NULL, NULL)) {
 			ErrorExit((LPTSTR)L"ReadFile");
 		}
 
-		error_ = BCryptDecrypt(key_handle_, (PUCHAR)data_input_, BLOCK_DIM, NULL, (PUCHAR)iv_, IV_LEN, (PUCHAR)data_output_, BLOCK_DIM, &dummy, 0);
+		error_ = BCryptDecrypt(key_handle_, (PUCHAR)data_input, BLOCK_DIM, NULL, (PUCHAR)iv_, IV_LEN, (PUCHAR)data_output, BLOCK_DIM, &dummy, 0);
 		if (error_ != 0x00000000) {
 			SetLastError(error_);
 			ErrorExit((LPTSTR)L"BCryptEncrypt");
 		}
 
-		if (!WriteFile(output_file_, data_output_, BLOCK_DIM, NULL, NULL)) {
+		if (!WriteFile(output_file_, data_output, BLOCK_DIM, NULL, NULL)) {
 			ErrorExit((LPTSTR)L"WriteFile");
 		}
 
@@ -425,58 +397,56 @@ void AesFile::DecryptFileC() {
 		//medium_speed = (medium_speed + speed) / (i);
 	}
 
-	SecureZeroMemory(data_input_, BLOCK_DIM);
-	SecureZeroMemory(data_output_, BLOCK_DIM);
+	SecureZeroMemory(data_input, BLOCK_DIM);
+	SecureZeroMemory(data_output, BLOCK_DIM);
 
-	data_input_ = (BYTE*)HeapReAlloc(GetProcessHeap(), NULL, data_input_, left_over_bytes_input_);
-	data_output_ = (BYTE*)HeapReAlloc(GetProcessHeap(), NULL, data_output_, left_over_bytes_input_);
+	data_input = (BYTE*)HeapReAlloc(GetProcessHeap(), NULL, data_input, left_over_bytes_input);
+	data_output = (BYTE*)HeapReAlloc(GetProcessHeap(), NULL, data_output, left_over_bytes_input);
 
 
-	if (data_input_ == NULL || data_output_ == NULL) {
+	if (data_input == NULL || data_output == NULL) {
 		SetLastError(ALLOC_FAILED);
 		ErrorExit((LPTSTR)L"HeapReAlloc");
 	}
 
-	if (!ReadFile(input_file_, data_input_, left_over_bytes_input_, NULL, NULL)) {
+	if (!ReadFile(input_file_, data_input, left_over_bytes_input, NULL, NULL)) {
 		ErrorExit((LPTSTR)L"ReadFile");
 	}
 
 
-	error_ = BCryptDecrypt(key_handle_, (PUCHAR)data_input_, left_over_bytes_input_, NULL, (PUCHAR)iv_, IV_LEN, (PUCHAR)data_output_, left_over_bytes_input_, &dummy, 0);
+	error_ = BCryptDecrypt(key_handle_, (PUCHAR)data_input, left_over_bytes_input, NULL, (PUCHAR)iv_, IV_LEN, (PUCHAR)data_output, left_over_bytes_input, &dummy, 0);
 	if (error_ != 0x00000000) {
 		SetLastError(error_);
 		ErrorExit((LPTSTR)L"BCryptEncrypt");
 	}
 
-	left_over_bytes_output_ = AnsiX293ForceReversePad(GetProcessHeap(), data_output_, left_over_bytes_input_);
+	left_over_bytes_output = AnsiX293ForceReversePad(GetProcessHeap(), data_output, left_over_bytes_input);
 
 
-	if (!WriteFile(output_file_, data_output_, left_over_bytes_output_, NULL, NULL)) {
+	if (!WriteFile(output_file_, data_output, left_over_bytes_output, NULL, NULL)) {
 		ErrorExit((LPTSTR)L"WriteFile");
 	}
 
-	SecureZeroMemory(data_input_, left_over_bytes_input_);
-	SecureZeroMemory(data_output_, left_over_bytes_output_);
-
-	HeapFree(GetProcessHeap(), 0, data_input_);
-	HeapFree(GetProcessHeap(), 0, data_output_);
+	SecureZeroMemory(data_input, left_over_bytes_input);
+	SecureZeroMemory(data_output, left_over_bytes_output);
 
 	wprintf(L"END Decryption\n\n");
 }
 
-void AesFile::PrintData() {
 
-	if (blocks_) {
-		wprintf(L"\nBlocks: %llu\n", blocks_);
-		wprintf(L"Input File Left Over Bytes: %d Bytes\n", left_over_bytes_input_);
-		wprintf(L"Input File Dimension: %lld Bytes\n\n", offset_.QuadPart);
+void AesFile::PrintInfo() {
 
-		wprintf(L"Output File Left Over Bytes: %d Bytes\n", left_over_bytes_output_);
-		wprintf(L"Output File Dimension: %lld Bytes\n\n", blocks_*BLOCK_DIM + left_over_bytes_output_);
+	if (blocks) {
+		wprintf(L"\nBlocks: %llu\n", blocks);
+		wprintf(L"Input File Left Over Bytes: %d Bytes\n", left_over_bytes_input);
+		wprintf(L"Input File Dimension: %lld Bytes\n\n", offset.QuadPart);
+
+		wprintf(L"Output File Left Over Bytes: %d Bytes\n", left_over_bytes_output);
+		wprintf(L"Output File Dimension: %lld Bytes\n\n", blocks*BLOCK_DIM + left_over_bytes_output);
 	}
 	else {
-		wprintf(L"Input File Dimension: %lld Bytes\n", offset_.QuadPart);
-		wprintf(L"Output File Dimension: %lld Bytes\n", left_over_bytes_output_);
+		wprintf(L"Input File Dimension: %lld Bytes\n", offset.QuadPart);
+		wprintf(L"Output File Dimension: %lld Bytes\n", left_over_bytes_output);
 	}
-
+	
 }
